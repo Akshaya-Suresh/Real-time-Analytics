@@ -1,0 +1,26 @@
+<div class='main-nav'>
+    <div class='navbar navbar-inverse navbar-fixed-top'>
+
+        <div class='clearfix'></div>
+        <div class='navbar-collapse collapse'  [class.show]="show">
+            <ul class='nav navbar-nav'>
+                <li style="float:none">
+                    <a class='navbar-brand' [routerLink]="['/home']">RMCOCKPIT</a>  
+                </li>
+                <li [routerLinkActive]="['link-active']">
+                    <a [routerLink]="['/home']">
+                        <span class='glyphicon glyphicon-home'></span> Home
+                    </a>
+                </li>
+                <li [routerLinkActive]="['link-active']">
+                    <a [routerLink]="['/login']">
+                        <span class='glyphicon glyphicon-user'></span>Login
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+
+
