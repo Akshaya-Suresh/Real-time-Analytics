@@ -6,6 +6,8 @@ router.use(bodyParser.urlencoded({ extended: true }))
 var db = require('../server/redisDB');
 
 
+// router.post('/plan',db.createPlan)
+
 router.post('/plan',db.createPlan)
 
 router.get('/plan/:id',db.getPlan)

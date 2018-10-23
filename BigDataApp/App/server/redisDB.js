@@ -5,7 +5,29 @@ router.use(bodyParser.json())
 router.use(bodyParser.urlencoded({ extended: true })) 
 var redis = require('redis');
 var client = redis.createClient({port:6379,host:"localhost"});
-var plan = {};
+//var plan = {};
+
+
+function validate(data){
+  var Validator = require('jsonschema').Validator;
+  var v = new Validator();
+
+  v.addSchema(require('../JSON Schema/jsonSCHM').planCostShares,'/planCostShares')
+  v.addSchema(require('../JSON Schema/jsonSCHM').linkedService,'/linkedService')
+  v.addSchema(require('../JSON Schema/jsonSCHM').planserviceCostShares,'/planserviceCostShares')
+  v.addSchema(require('../JSON Schema/jsonSCHM').linkedPlanServices,'/linkedPlanServices')
+
+  var schema = require('../JSON Schema/jsonSCHM').planSchema;
+  var results = v.validate(data,schema).valid
+  console.log(results)
+  if (results){
+    return true;
+  }
+  else{
+    return false;
+  }
+
+}
 
 function createPlan(req,res,next){
   
@@ -16,50 +38,69 @@ function createPlan(req,res,next){
       res.status(400).send(err);
     }
    });
- 
-  const data = req.body;
-  const Joi = require('joi');
-  const schema = require('../JSON Schema/jsonSchema').Schema;
-  Joi.validate(data,schema,(err,value) =>{
-    if(err){
-        console.log(err);
-       res.status(400).json({
-        status: 'error',
-        message: 'Invalid JSON schema',
-      });
-
-    }
-    else{
-
-      try{
-         createFullMap(data);
-         for(var x in plan){
-           client.sadd("plan",x)
-           var temp = plan[x]
-           for(var y in temp){
-
-             client.HMSET(x,y,temp[y])
+  var data = req.body
+  var flag = validate(data)
+  if(flag){
+   // console.log(data)
+    for(var x in data){
+    //  console.log(x);
+       var temp = data[x]
+    //  console.log(temp)
+      if(temp instanceof Array){
+        for(var z in temp){
+         //    console.log(z);
+        //   console.log(temp[z])
+          var temp1 = temp[z];
+                client.sadd("plan",temp1.objectType+'____'+temp1.objectId)
+          for(var i in temp1){
+       
+            if(temp1[i] instanceof Object){
+              var temp2 = temp1[i]
+            // console.log(temp2.objectType+'____'+temp2.objectId)
+              client.sadd("plan",temp2.objectType+'____'+temp2.objectId)
+              for(var j in temp2){
+            //    console.log(temp2.objectType+'____'+temp2.objectId,j,temp2[j])
+                  client.HMSET(temp2.objectType+'____'+temp2.objectId,j,temp2[j])
+              }
+            }
+            else{
+              //  console.log(i,temp1[i])
+                client.HMSET(temp1.objectType+'____'+temp1.objectId,i,temp1[i])
+            }
          
-           }
-         }
           }
-          catch(error){
-            console.error(error);
-          }
-       //   console.log(data.objectId);
-            res.json({
-              status: 'success',
-              message: 'Plan created successfully',
-              data : data
-          });
+        }
       
+      
+  
       }
-    });
-
+     else if(temp instanceof Object){
+          client.sadd("plan",temp.objectType+'____'+temp.objectId)
+        for(var y in temp){
+        //   console.log(y)
+        //    console.log(temp[y])
+          client.HMSET(temp.objectType+'____'+temp.objectId,y,temp[y])
+        }
+      } 
+      else{
+          client.sadd("plan",data.objectType+'____'+data.objectId)
+          client.HMSET(data.objectType+'____'+data.objectId,x,data[x])
+      } 
+    }
+    res.json({
+      status: 'success',
+      message: 'Plan created successfully',
+      data : data
+   });
+  }    else{
+     res.status(400).json({
+      status: 'error',
+      message: 'Invalid JSON'
+     });
+  }
+ }
 
  
-}
-
 function getPlan(req,res,next){
   client.on('connect',function(err) {
     console.log("Redis client is connected");
@@ -113,21 +154,21 @@ function deletePlan(req,res,next){
                });
                i++
         }
+        else{
+          client.SREM("plan",req.params.id,function(err,result){
+            if(err){
+              res.status(400).json({
+                status: 'error',
+                message: 'Cant remove from set'
+                   });
+                   i++
+               }  
+           });
+        }
 
     });
 
-    if(req.params.id in plan && i==0){
-       delete plan[req.params.id];
-       client.SREM("plan",req.params.id,function(err,result){
-        if(err){
-          res.status(400).json({
-            status: 'error',
-            message: 'Cant remove from set'
-               });
-           }  
-       });
-    }
-    
+   
     if(i==0){
       res.status(200).json({
         status: 'delete',
@@ -155,7 +196,6 @@ function deleteFullPlan(req,res,next){
         status: 'error',
         message: 'Error in deleting'
       });
-      plan={};
     }
     else{
       res.status(200).json({
@@ -174,75 +214,75 @@ function updatePlan(req,res,next){
       res.status(400).send(err);
     }
   });
-
-    client.FLUSHDB(function(err,result){
-      if(err){
-        console.log(err);
-        res.status(400).json({
-          status: 'error',
-          message: 'Plan ID doesnt exist'
-        });
-        plan={};
-      }
-    });
-    const data = req.body; 
-        try{
-           createFullMap(data);
-           for(var x in plan){
-             client.sadd("plan",x)
-             var temp = plan[x]
-             for(var y in temp){
-  
-               client.HMSET(x,y,temp[y])
+  var plan_id = req.params.id
+  var  data= req.body   
+        var flag1 = validate(data)
+        if(flag1){
+          client.HGETALL(plan_id,function(err,result){
+            if(result==null){
+              res.status(400).json({
+                status: 'error',
+                message: 'Object doesnt exist',
+             });
+            }
+            else{
+              for(var x in data){
+                   var temp = data[x]
+                  if(temp instanceof Array){
+                    for(var z in temp){
+                      var temp1 = temp[z];
+                      for(var i in temp1){
+ 
+                        if(temp1[i] instanceof Object){
+                          var temp2 = temp1[i]
+        
+                          for(var j in temp2){
+                       
+                              client.HMSET(temp2.objectType+'____'+temp2.objectId,j,temp2[j])
+                          }
+                        }
+                        else{
+                     
+                            client.HMSET(temp1.objectType+'____'+temp1.objectId,i,temp1[i])
+                        }
+                     
+                      }
+                    }
+                  
+                  
+              
+                  }
+                 else if(temp instanceof Object){
            
-             }
-           }
-            }
-            catch(error){
-              console.error(error);
-            }
-         //   console.log(data.objectId);
+                    for(var y in temp){
+                      client.HMSET(temp.objectType+'____'+temp.objectId,y,temp[y])
+                    }
+                  } 
+                  else{
+                      client.HMSET(data.objectType+'____'+data.objectId,x,data[x])
+                  } 
+                }
+              
               res.json({
                 status: 'success',
-                message: 'Plan updated successfully',
+                message: 'Plan Updated successfully',
                 data : data
-            });
+             });
+            }
+
+          })
         
-        
-    
+        }
+      else{
+        res.status(400).json({
+          status: 'error',
+          message: 'Invalid JSON'
+         });
+      } 
+  
+
   
 }
-
-  function createFullMap(data){
-      plan[data.objectType+'_____'+data.objectId] = {
-        _org : data._org,
-        objectId : data.objectId,
-        objectType : data.objectType,
-        planType : data.planType,
-        creationDate : data.creationDate
-       };
-    plan[data.planCostShares.objectType+'____'+data.planCostShares.objectId] = data.planCostShares;
-    plan[data.linkedPlanServices[0].linkedService.objectType+'____'+data.linkedPlanServices[0].linkedService.objectId] = data.linkedPlanServices[0].linkedService;
-    plan[data.linkedPlanServices[0].planserviceCostShares.objectType+'____'+data.linkedPlanServices[0].planserviceCostShares.objectId] = data.linkedPlanServices[0].planserviceCostShares;
-    plan[data.linkedPlanServices[1].linkedService.objectType+'____'+data.linkedPlanServices[1].linkedService.objectId] = data.linkedPlanServices[1].linkedService;
-    plan[data.linkedPlanServices[1].planserviceCostShares.objectType+'____'+data.linkedPlanServices[1].planserviceCostShares.objectId] = data.linkedPlanServices[1].planserviceCostShares;
-    plan[data.linkedPlanServices[0].objectType+'____'+data.linkedPlanServices[0].objectId] = {
-        _org : data.linkedPlanServices[0]._org,
-        objectId : data.linkedPlanServices[0].objectId,
-        objectType : data.linkedPlanServices[0].objectType
-      };
-     plan[data.linkedPlanServices[1].objectType+'____'+data.linkedPlanServices[1].objectId] = {
-        _org : data.linkedPlanServices[1]._org,
-        objectId : data.linkedPlanServices[1].objectId,
-        objectType : data.linkedPlanServices[1].objectType
-      };
-     plan[data.linkedPlanServices[1].objectType+'____'+data.linkedPlanServices[1].objectId] = {
-        _org : data.linkedPlanServices[1]._org,
-        objectId : data.linkedPlanServices[1].objectId,
-        objectType : data.linkedPlanServices[1].objectType
-      };
-
-  }
 
 module.exports ={
   createPlan:createPlan,
@@ -250,4 +290,4 @@ module.exports ={
   deletePlan: deletePlan,
   updatePlan: updatePlan,
   deleteFullPlan: deleteFullPlan
-};
+}; 
