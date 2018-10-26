@@ -1,4 +1,4 @@
-# UserRegis
+# App
 ## Prerequisites
 Go to the terminal
 ```
