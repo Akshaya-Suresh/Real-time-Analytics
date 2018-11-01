@@ -39,25 +39,33 @@ function createPlan(req,res,next){
     }
    });
   var data = req.body
+
   var flag = validate(data)
   if(flag){
    // console.log(data)
     for(var x in data){
+
     //  console.log(x);
        var temp = data[x]
+   
+      // client.sadd("plan",data.objectType+'____'+data.objectId)
     //  console.log(temp)
       if(temp instanceof Array){
         for(var z in temp){
          //    console.log(z);
         //   console.log(temp[z])
+       // console.log(x)
           var temp1 = temp[z];
-                client.sadd("plan",temp1.objectType+'____'+temp1.objectId)
+        //  console.log(data.objectType+'____'+data.objectId+'____'+x,temp1.objectType+'____'+temp1.objectId)
+         client.sadd(data.objectType+'____'+data.objectId+'____'+x,temp1.objectType+'____'+temp1.objectId)
+             //   client.sadd("plan",temp1.objectType+'____'+temp1.objectId)
           for(var i in temp1){
        
             if(temp1[i] instanceof Object){
               var temp2 = temp1[i]
             // console.log(temp2.objectType+'____'+temp2.objectId)
-              client.sadd("plan",temp2.objectType+'____'+temp2.objectId)
+         //   console.log(temp1.objectType+'____'+temp1.objectId+'____'+i,temp2.objectType+'____'+temp2.objectId)
+            client.sadd(temp1.objectType+'____'+temp1.objectId+'____'+i,temp2.objectType+'____'+temp2.objectId)
               for(var j in temp2){
             //    console.log(temp2.objectType+'____'+temp2.objectId,j,temp2[j])
                   client.HMSET(temp2.objectType+'____'+temp2.objectId,j,temp2[j])
@@ -75,7 +83,10 @@ function createPlan(req,res,next){
   
       }
      else if(temp instanceof Object){
-          client.sadd("plan",temp.objectType+'____'+temp.objectId)
+     // console.log(data.objectType+'____'+data.objectId+'____'+x,temp.objectType+'____'+temp.objectId)
+      client.sadd(data.objectType+'____'+data.objectId+'____'+x,temp.objectType+'____'+temp.objectId)
+      
+        //  client.sadd("plan",temp.objectType+'____'+temp.objectId)
         for(var y in temp){
         //   console.log(y)
         //    console.log(temp[y])
@@ -83,9 +94,10 @@ function createPlan(req,res,next){
         }
       } 
       else{
-          client.sadd("plan",data.objectType+'____'+data.objectId)
+         // client.sadd("plan",data.objectType+'____'+data.objectId)
           client.HMSET(data.objectType+'____'+data.objectId,x,data[x])
       } 
+      
     }
     res.json({
       status: 'success',
@@ -109,16 +121,14 @@ function getPlan(req,res,next){
       res.status(400).send(err);
   }
    });
- 
-    
-    client.HGETALL(req.params.id, function(err,result){
+    client.SMEMBERS(req.params.id, function(err,result){
       if(err){
         res.status(400).json({
         status: 'error',
         message: 'Not able to fetch plan'
            });
        }
-       if(result==null){
+       else if(result==null|| result==undefined){
         res.status(400).json({
           status: 'error',
           message: 'Not a valid Id',
@@ -133,9 +143,41 @@ function getPlan(req,res,next){
         });
      }
       });
-  
-  
+
 }
+function getObject(req,res,next){
+  client.on('connect',function(err) {
+    console.log("Redis client is connected");
+    if(err){
+      console.log("Not able to connect to Redis "+ err);
+      res.status(400).send(err);
+  }
+   });
+    client.HGETALL(req.params.objId, function(err,result){
+      if(err){
+        res.status(400).json({
+        status: 'error',
+        message: 'Not able to fetch object'
+           });
+       }
+       else if(result==null|| result==undefined){
+        res.status(400).json({
+          status: 'error',
+          message: 'Not a valid Id'
+
+      });
+       }
+       else{
+          res.status(200).json({
+            status: 'get',
+            message: 'Values stored in Redis',
+            data : result
+        });
+     }
+      });
+
+}
+
 
 function deletePlan(req,res,next){
   client.on('connect',function(err) {
@@ -145,6 +187,8 @@ function deletePlan(req,res,next){
       res.status(400).send(err);
       }
    });
+
+   
     var i=0;
     client.DEL(req.params.id,function(err,result){
         if(err){
@@ -154,31 +198,21 @@ function deletePlan(req,res,next){
                });
                i++
         }
-        else{
-          client.SREM("plan",req.params.id,function(err,result){
-            if(err){
-              res.status(400).json({
-                status: 'error',
-                message: 'Cant remove from set'
-                   });
-                   i++
-               }  
-           });
-        }
-
-    });
-
-   
+      });
+      
+      
+          
     if(i==0){
+      helpDelete(req.params.id,res,i);
       res.status(200).json({
         status: 'delete',
         message: 'Deleted from Redis',
-      })
+      });
     }
-     
+  
+   
 
-
-   }
+  }
    
 
 function deleteFullPlan(req,res,next){
@@ -213,71 +247,45 @@ function updatePlan(req,res,next){
       console.log("Not able to connect to Redis "+ err);
       res.status(400).send(err);
     }
-  });
-  var plan_id = req.params.id
-  var  data= req.body   
-        var flag1 = validate(data)
-        if(flag1){
-          client.HGETALL(plan_id,function(err,result){
-            if(result==null){
-              res.status(400).json({
-                status: 'error',
-                message: 'Object doesnt exist',
-             });
-            }
-            else{
-              for(var x in data){
-                   var temp = data[x]
-                  if(temp instanceof Array){
-                    for(var z in temp){
-                      var temp1 = temp[z];
-                      for(var i in temp1){
- 
-                        if(temp1[i] instanceof Object){
-                          var temp2 = temp1[i]
-        
-                          for(var j in temp2){
-                       
-                              client.HMSET(temp2.objectType+'____'+temp2.objectId,j,temp2[j])
-                          }
-                        }
-                        else{
-                     
-                            client.HMSET(temp1.objectType+'____'+temp1.objectId,i,temp1[i])
-                        }
-                     
-                      }
-                    }
-                  
-                  
-              
-                  }
-                 else if(temp instanceof Object){
-           
-                    for(var y in temp){
-                      client.HMSET(temp.objectType+'____'+temp.objectId,y,temp[y])
-                    }
-                  } 
-                  else{
-                      client.HMSET(data.objectType+'____'+data.objectId,x,data[x])
-                  } 
-                }
-              
-              res.json({
-                status: 'success',
-                message: 'Plan Updated successfully',
-                data : data
-             });
-            }
+   });
 
-          })
-        
-        }
+  var flag = validate(req.body)
+
+  if(flag){
+    client.HGETALL(req.params.id, function(err,result){
+      if(result==null){
+        res.status(400).json({
+          status: 'error',
+          message: 'Object doesnt exist',
+       });
+    }
+  });
+  console.log(req.body)
+    client.HMSET(req.params.id, req.body, function(err,result){
+      if(err){
+        console.log(err)
+        res.status(400).json({
+          status: 'error',
+          message: 'Cant update',
+       });
+      }
+      else{
+          
+        res.json({
+          status: 'success',
+          message: 'Plan Updated successfully',
+          data : req.body
+       });
+      }
+    })
+    
+  }     
+     
       else{
         res.status(400).json({
           status: 'error',
           message: 'Invalid JSON'
-         });
+         }); 
       } 
   
 
@@ -289,5 +297,95 @@ module.exports ={
   getPlan: getPlan,
   deletePlan: deletePlan,
   updatePlan: updatePlan,
-  deleteFullPlan: deleteFullPlan
+  deleteFullPlan: deleteFullPlan,
+  getObject:getObject
 }; 
+
+function helpDelete(inp,res,i){
+  if(i==0){
+    client.keys('*', function (err, keys) {
+      if (err) {
+        res.status(400).json({
+        status: 'error',
+        message: 'Not able to delete'
+           });
+           i++
+          }
+
+ else{
+   //    console.log(keys);
+
+   keys.forEach(function(key){
+     client.TYPE(key,(err,res)=>{
+//     console.log(key,res)
+     if(key.includes(inp)){
+    //   console.log(key)
+         client.SMEMBERS(key, function(err,result){
+     //       console.log(result)
+           keys.forEach(function(key1){
+            client.TYPE(key,(err,res)=>{
+              //     console.log(key,res)
+              for(var temp in result){
+                if(key1.includes(result[temp])){
+                   helpDelete(result[temp],res,i)
+                }
+              }
+                   
+                   })
+           })
+
+          if(err){
+            console.log(err)
+            i++
+           }
+           else if(result==null|| result==undefined){
+              console.log(err)
+           }
+           else{
+             client.SREM(key,result,function(err2,result2){
+              if(err2) {
+                console.log(err2)
+                i++
+              }
+                
+    
+             });
+            client.DEL(result,function(err1,result1){
+              if(err1){
+                console.log(err1)
+                i++
+              }
+          });
+
+        }
+      });
+     
+             
+  }
+    if(res=='set'){
+  //    console.log(key,res)
+
+      if(client.SISMEMBER(key,inp)){
+        client.SREM(key,inp,function(err1,result){
+
+          if(err1){
+            res.status(400).json({
+              status: 'error',
+              message: 'Cant remove from set'
+                 });
+                 i++
+             } 
+           });
+          
+      }
+      
+     } 
+     })
+   })
+
+ }
+
+         
+    });  
+  }
+}

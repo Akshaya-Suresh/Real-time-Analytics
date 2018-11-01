@@ -12,6 +12,8 @@ router.post('/plan',db.createPlan)
 
 router.get('/plan/:id',db.getPlan)
 
+router.get('/object/:objId',db.getObject)
+
 router.delete('/plan/:id', db.deletePlan)
 
 router.delete('/plan', db.deleteFullPlan)
