@@ -5,10 +5,31 @@ router.use(bodyParser.json())
 router.use(bodyParser.urlencoded({ extended: true })) 
 var redis = require('redis');
 var client = redis.createClient({port:6379,host:"localhost"});
+
 const fs = require('fs')
 const jwt = require('jsonwebtoken')
-//var plan = {};
-var publicKey = fs.readFileSync('./routes/public.pem','utf8')
+
+function getToken(req,res,next){
+      var payload = req.body;
+   //    console.log(payload)
+  //    var clientId = payload.client_id
+  //     console.log(clientId)
+      var privateKey = fs.readFileSync('./Keys/private.pem','utf8')
+   //   console.log(privateKey)
+
+      var signOptions ={
+          issuer: 'Github',
+          audience: 'https://127.0.0.1:4501/api/' ,
+          expiresIn: '30d',
+          algorithm: 'RS256'
+      };
+ var token = jwt.sign(payload,privateKey,signOptions)
+   res.json({
+      "access_token" : token,
+      "token_type" : "Bearer"
+  });
+}
+
 
 function validate(data){
   var Validator = require('jsonschema').Validator;
@@ -32,21 +53,7 @@ function validate(data){
 }
 
 function createPlan(req,res,next){
-  
 
-  
-  var token = req.headers.authorization.substring(7,req.headers.authorization.length)
-  console.log(token);
-      var verifyOptions ={
-        issuer:'Github',
-        audience: 'https://127.0.0.1:4501/api/' ,
-        expiresIn: '30d',
-        algorithm: 'RS256'
-    };
-try{
-  console.log(jwt.verify(token,publicKey,verifyOptions))
-
-}catch(err){console.log(err)}
   client.on('connect',function(err) {
     console.log("Redis client is connected");
     if(err){
@@ -314,7 +321,8 @@ module.exports ={
   deletePlan: deletePlan,
   updatePlan: updatePlan,
   deleteFullPlan: deleteFullPlan,
-  getObject:getObject
+  getObject:getObject,
+  getToken: getToken
 }; 
 
 function helpDelete(inp,res,i){
