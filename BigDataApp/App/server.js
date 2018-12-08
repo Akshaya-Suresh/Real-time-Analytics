@@ -12,8 +12,10 @@ var api=require('./routes/api');
 
 // index and api object contain the path of routing  files for our application
 
-var port=4501;
+var port=4503;
 var app=express();
+
+app.set('etag','strong')
 //db setup
 
 //Define the port and create an object of express class

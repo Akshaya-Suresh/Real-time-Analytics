@@ -42,7 +42,7 @@ var GitHubStrategy = require('passport-github').Strategy;
         var verifyOptions ={
           issuer: 'Github',
           audience: 'https://127.0.0.1:4501/api/' ,
-          expiresIn: '30d',
+          expiresIn: '1h',
           algorithm: 'RS256'
       };
   try{
@@ -70,9 +70,9 @@ function(req, res) {
 
 router.post('/plan',auth, db.createPlan)
 
-router.get('/plan/:id',auth,db.getPlan)
+router.get('/plan/:id',auth,db.getPlanFull)
 
-router.get('/object/:objId',auth,db.getObject)
+// router.get('/object/:objId',auth,db.getObject)
 
 router.delete('/plan/:id', auth,db.deletePlan)
 

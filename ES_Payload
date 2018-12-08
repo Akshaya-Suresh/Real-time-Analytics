@@ -1,0 +1,287 @@
+DELETE /plan
+
+#Create plan 
+PUT /plan
+{
+  "mappings": {
+    "_doc": {
+      "properties": {
+        "my_join_field": { 
+          "type": "join",
+          "relations": {
+            "plan" :["planCostShares","linkedPlanServices"],
+            "linkedPlanServices": ["linkedService","planserviceCostShares"]
+          }
+        }
+      }
+    }
+  }
+}
+
+PUT plan/_doc/12xvxc345ssdsds
+{
+  "plan":{
+    "_org": "example.com",
+	  "objectId": "12xvxc345ssdsds",
+  	"objectType": "plan",
+	  "planType": "inNetwork",
+  	"creationDate": "12-12-2017"
+  },
+  "my_join_field":{
+    "name" : "plan"
+  }
+}
+
+PUT /plan/_doc/1234vxc2324sdf?routing=12xvxc345ssdsds&refresh
+{
+  "planCostShares": {
+    "deductible": 2000,
+		"_org": "example.com",
+		"copay": 10,
+		"objectId": "1234vxc2324sdf",
+		"objectType": "membercostshare"
+  },
+  "my_join_field":{
+    "name":"planCostShares",
+    "parent": "12xvxc345ssdsds"
+  }
+}
+
+PUT /plan/_doc/27283xvx9asdff?routing=12xvxc345ssdsds&refresh
+{
+  "linkedPlanServices":{
+    "_org": "example.com",
+		"objectId": "27283xvx9asdff",
+		"objectType": "planservice"
+  },
+  "my_join_field":{
+    "name": "linkedPlanServices",
+    "parent": "12xvxc345ssdsds"
+  }
+}
+
+PUT /plan/_doc/27283xvx9sdf?routing=12xvxc345ssdsds&refresh
+{
+  "linkedPlanServices":{
+    "_org": "example.com",
+		"objectId": "27283xvx9sdf",
+		"objectType": "planservice"
+  },
+  "my_join_field":{
+    "name": "linkedPlanServices",
+    "parent": "12xvxc345ssdsds"
+  }
+}
+PUT /plan/_doc/1234520xvc30sfs?routing=12xvxc345ssdsds&refresh
+{
+  "linkedService":{
+  	  "_org": "example.com",
+			"objectId": "1234520xvc30sfs",
+			"objectType": "service",
+			"name": "well baby"
+  },
+  "my_join_field":{
+    "name":"linkedService",
+    "parent": "27283xvx9sdf"
+  }
+}
+
+
+PUT /plan/_doc/1234512xvc1314asdfs?routing=12xvxc345ssdsds&refresh
+{
+  "planserviceCostShares":{
+      "deductible": 10,
+			"_org": "example.com",
+			"copay": 175,
+			"objectId": "1234512xvc1314asdfs",
+			"objectType": "membercostshare"
+  },
+  "my_join_field":{
+    "name":"planserviceCostShares",
+    "parent": "27283xvx9asdff"
+  }
+}
+
+
+PUT /plan/_doc/1234512xvc1314sdfsd?routing=12xvxc345ssdsds&refresh
+{
+  "planserviceCostShares":{
+    	"deductible": 10,
+			"_org": "example.com",
+			"copay": 15,
+			"objectId": "1234512xvc1314sdfsd",
+			"objectType": "membercostshare"
+  },
+  "my_join_field":{
+    "name":"planserviceCostShares",
+    "parent": "27283xvx9sdf"
+  }
+}
+PUT /plan/_doc/1234520xvc30asdf?routing=12xvxc345ssdsds&refresh
+{
+  "linkedService":{
+    	"_org": "example.com",
+			"objectId": "1234520xvc30asdf",
+			"objectType": "service",
+			"name": "Yearly physical"
+  },
+  "my_join_field":{
+    "name":"linkedService",
+    "parent": "27283xvx9asdff"
+  }
+}
+
+#Update
+
+PUT /plan/_doc/1234520xvc30asdf?routing=12xvxc345ssdsds&refresh
+{
+  "linkedService":{
+    	"_org": "example.com",
+			"objectId": "1234520xvc30asdf",
+			"objectType": "service",
+			"name": "Yearly physical-1"
+  },
+  "my_join_field":{
+    "name":"linkedService",
+    "parent": "27283xvx9asdff"
+  }
+}
+
+#Delete 
+
+DELETE /plan/_doc/1234520xvc30asdf
+
+#To see the mapping
+GET /plan/_mapping/_doc/
+
+#To get the objects
+GET /plan/_doc/_search
+GET /plan/_doc/_search
+{
+  "query": {
+    "match_all": {}
+  },
+  "sort": ["_id"]
+}
+
+#Search queries for case1
+GET /plan/_doc/_search
+{
+  "query":{
+    "bool":{
+      "filter":{
+        "term":{
+          "data.planCostShares.deductible" : 2000
+        }
+      }
+    }
+  }
+}
+#Field faceting
+GET /plan/_doc/_search
+{
+  "query":{
+    "bool":{
+      "filter":{
+        "term":{
+          "data.planCostShares.deductible" : 2000
+        }
+      }
+    }
+  }
+}
+
+#Query faceting
+GET /plan/_doc/_search
+{
+  "query":{
+    "bool":{
+      "filter":{
+        "range":{
+          "data.planCostShares.deductible" : {"gte":10,"lte":1999}
+        }
+      }
+    }
+  }
+}
+
+#Date faceting
+GET /plan/_doc/_search
+{
+  "query":{
+    "bool":{
+      "filter":{
+        "range":{
+          "data.creationDate" : {"gte":"now",
+            "format" : "dd-MM-yyyy"
+          }
+        }
+      }
+    }
+  }
+}
+GET /plan/_doc/_search?q=data.planCostShares.deductible:2000
+
+GET /plan/_doc/_search?q=data.planType:inNetwork
+
+
+#Search queries for case2
+
+
+GET /plan/_search?pretty
+{
+    "query": {
+        "has_child" : {
+            "type" : "linkedPlanServices",
+            "query" : {
+               "match_all": {}
+            }
+        }
+    }
+}
+
+GET /plan/_search?pretty
+{
+    "query": {
+        "has_child" : {
+            "type" : "planserviceCostShares",
+            "query" : {
+               "match_all": {
+           
+               }
+            }
+        }
+    }
+}
+
+GET /plan/_search?pretty
+{
+    "query": {
+        "has_child" : {
+            "type" : "planserviceCostShares",
+            "query" : {
+              "range" :{
+                "planserviceCostShares.copay":{
+                  "gte": "20"
+                }
+              }
+            }
+        }
+    }
+}
+
+GET /plan/_search?pretty
+{
+    "query": {
+        "has_parent" : {
+            "parent_type": "linkedPlanServices",
+             "query" : {
+               "match_all": {
+           
+               }
+        }
+    }
+  }
+}
+
+GET /plan/_search?q=planCostShares.copay:10
